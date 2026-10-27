@@ -15,6 +15,10 @@ export const pendingRequests = new Map<string, PendingRequestHolder>();
 const router = Router();
 
 async function handleMcpIntercept(req: Request, res: Response): Promise<void> {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Request body must be a JSON object.' });
+    return;
+  }
   const id = uuidv4();
   const agentName = req.body.agent_name || req.body.agentName || 'autonomous-agent';
   const sessionId = req.body.session_id || req.body.sessionId || agentName;
@@ -29,6 +33,11 @@ async function handleMcpIntercept(req: Request, res: Response): Promise<void> {
     req.body.path ||
     req.body.file ||
     '';
+
+  if (typeof candidatePath !== 'string') {
+    res.status(400).json({ error: 'Path or file must be a string.' });
+    return;
+  }
 
   // 1. Session Quarantine Check: Is this session already locked?
   if (isSessionLocked(sessionId)) {
