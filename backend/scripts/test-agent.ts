@@ -1,3 +1,5 @@
+import path from 'path';
+
 /**
  * Mock Autonomous AI Agent (MCP Tool Call Simulator)
  *
@@ -9,6 +11,8 @@
 const TARGET_PORT = process.env.PORT || 3001;
 const PROXY_URL = `http://localhost:${TARGET_PORT}/api/mcp/execute`;
 
+const targetFilePath = path.join('src', 'core', 'auth.ts');
+
 const mcpPayload = {
   jsonrpc: "2.0",
   id: 1,
@@ -18,7 +22,7 @@ const mcpPayload = {
   params: {
     name: "write_file",
     arguments: {
-      path: "src/core/auth.ts",
+      path: targetFilePath,
       content: "// AI injected code attempting to bypass auth\nexport const bypass = true;",
       old_content: "// Production Auth Policy\nexport const requireAuth = true;\nexport const bypass = false;",
       new_content: "// Production Auth Policy\nexport const requireAuth = false;\nexport const bypass = true;"

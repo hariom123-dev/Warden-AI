@@ -1,7 +1,10 @@
+// 1. Validate environment configuration before any other subsystems boot
+import { env } from './config/env';
+
 import express, { Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
-import { initDatabase, getAllAuditLogs, getAuditLogById } from './db/client';
+import { initDatabase, getAllAuditLogs, getAuditLogById, DB_PATH } from './db/client';
 import { initWebSocketServer } from './ws/socket';
 import mcpRouter from './routes/mcp';
 import { initHoneypot, getQuarantinedSessions } from './security/honeypot';
@@ -9,17 +12,19 @@ import { initHoneypot, getQuarantinedSessions } from './security/honeypot';
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const PORT = env.PORT;
 
 // Middleware
-app.use(cors());
+app.use(cors(env.CORS_ORIGIN === '*' ? undefined : { origin: env.CORS_ORIGIN }));
 app.use(express.json({ limit: '10mb' }));
 
 // Database Initialization on startup
 initDatabase();
 
-// Arm Cryptographic Decoy Honeypot IDS
-initHoneypot();
+// Arm Cryptographic Decoy Honeypot IDS if enabled
+if (env.HONEYPOT_ENABLED) {
+  initHoneypot();
+}
 
 // Initialize WebSocket Control Stream on HTTP Server
 const wss = initWebSocketServer(server);
@@ -30,7 +35,7 @@ app.use('/api/mcp', mcpRouter);
 // Honeypot & Quarantine Status endpoint
 app.get('/api/ids/status', (_req: Request, res: Response) => {
   res.status(200).json({
-    status: 'armed',
+    status: env.HONEYPOT_ENABLED ? 'armed' : 'disabled',
     honeypot_file: '.env.decoy',
     quarantined_sessions: getQuarantinedSessions()
   });
@@ -82,7 +87,6 @@ if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`[AI-Security-Gateway] Reverse proxy backend listening on port ${PORT}`);
     console.log(`[AI-Security-Gateway] WebSocket control stream mounted.`);
-    console.log(`[AI-Security-Gateway] SQLite audit trail initialized.`);
+    console.log(`[AI-Security-Gateway] SQLite audit trail initialized at ${DB_PATH}.`);
   });
 }
-

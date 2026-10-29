@@ -39,7 +39,11 @@ JWT_SECRET=super-canary-jwt-token-vault-9918237192
  */
 export function initHoneypot(targetDir = DEFAULT_HONEYPOT_DIR): string {
   try {
-    const decoyPath = path.join(targetDir, DECOY_FILENAME);
+    const resolvedDir = path.resolve(targetDir);
+    if (!fs.existsSync(resolvedDir)) {
+      fs.mkdirSync(resolvedDir, { recursive: true });
+    }
+    const decoyPath = path.resolve(resolvedDir, DECOY_FILENAME);
     fs.writeFileSync(decoyPath, CANARY_PAYLOAD, { encoding: 'utf8', mode: 0o600 });
     activeDecoyPath = decoyPath;
 
@@ -91,11 +95,15 @@ function registerCleanupHandlers(): void {
  */
 export function isHoneypotAccess(filePathOrCommand: string): boolean {
   if (!filePathOrCommand) return false;
-  const normalized = filePathOrCommand.toLowerCase().replace(/\\/g, '/');
+  // Normalize both forward and backward slashes across Windows and POSIX
+  const normalized = path.normalize(filePathOrCommand).toLowerCase().replace(/\\/g, '/');
+  const decoyName = path.basename(DECOY_FILENAME).toLowerCase();
+  const activeBase = activeDecoyPath ? path.basename(activeDecoyPath).toLowerCase() : decoyName;
   return (
+    normalized.includes(decoyName) ||
+    normalized.includes(activeBase) ||
     normalized.includes('.env.decoy') ||
-    normalized.includes('env.decoy') ||
-    (activeDecoyPath !== null && normalized.includes(path.basename(activeDecoyPath).toLowerCase()))
+    normalized.includes('env.decoy')
   );
 }
 

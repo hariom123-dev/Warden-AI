@@ -4,17 +4,23 @@
   "description": "Strict-Control AI Harness - Zero-Trust AI Security Gateway Reverse Proxy Backend",
   "main": "dist/index.js",
   "scripts": {
+    "bootstrap": "tsx src/cli/healthcheck.ts",
+    "prestart": "tsx src/cli/healthcheck.ts",
+    "predev": "tsx src/cli/healthcheck.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "healthcheck": "tsx src/cli/healthcheck.ts",
     "test:agent": "tsx scripts/test-agent.ts",
     "test:honeypot": "tsx scripts/test-honeypot-breach.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "uuid": "^11.1.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^3.24.2"
   },
   "optionalDependencies": {
     "better-sqlite3": "^11.8.1"

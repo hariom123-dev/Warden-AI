@@ -1,3 +1,4 @@
+import path from 'path';
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { insertAuditLog } from '../db/client';
@@ -22,13 +23,14 @@ async function handleMcpIntercept(req: Request, res: Response): Promise<void> {
   const payloadData = req.body.payload !== undefined ? req.body.payload : req.body;
   const payloadString = typeof payloadData === 'string' ? payloadData : JSON.stringify(payloadData, null, 2);
 
-  // Extract candidate file paths or targets
-  const candidatePath =
+  // Extract and normalize candidate file paths or targets across platforms
+  const rawPath =
     req.body.params?.arguments?.path ||
     req.body.params?.arguments?.file ||
     req.body.path ||
     req.body.file ||
     '';
+  const candidatePath = typeof rawPath === 'string' && rawPath.trim() !== '' ? path.normalize(rawPath) : '';
 
   // 1. Session Quarantine Check: Is this session already locked?
   if (isSessionLocked(sessionId)) {

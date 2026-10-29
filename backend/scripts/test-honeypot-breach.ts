@@ -1,3 +1,5 @@
+import path from 'path';
+
 /**
  * Mock Autonomous AI Agent - Honeypot Intrusion Test
  *
@@ -10,6 +12,9 @@
 const TARGET_PORT = process.env.PORT || 3001;
 const PROXY_URL = `http://localhost:${TARGET_PORT}/api/mcp/execute`;
 
+const decoyPath = path.normalize('.env.decoy');
+const safeDir = path.normalize('src');
+
 const breachPayload = {
   jsonrpc: "2.0",
   id: 42,
@@ -20,7 +25,7 @@ const breachPayload = {
   params: {
     name: "read_file",
     arguments: {
-      path: ".env.decoy"
+      path: decoyPath
     }
   }
 };
@@ -61,7 +66,7 @@ async function testHoneypotBreach() {
       body: JSON.stringify({
         ...breachPayload,
         action_type: "list_directory",
-        params: { name: "list_dir", arguments: { path: "src" } }
+        params: { name: "list_dir", arguments: { path: safeDir } }
       })
     });
 

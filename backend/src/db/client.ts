@@ -1,4 +1,6 @@
+import fs from 'fs';
 import path from 'path';
+import { env } from '../config/env';
 
 export type AuditLogStatus = 'pending' | 'approved' | 'rejected';
 
@@ -11,7 +13,15 @@ export interface AuditLog {
   status: AuditLogStatus;
 }
 
-const DB_PATH = process.env.DB_PATH || path.resolve(__dirname, '../../audit.db');
+export const DB_PATH = path.resolve(
+  env?.DB_PATH || process.env.DB_PATH || path.join(__dirname, '../../audit.db')
+);
+
+// Ensure database parent directory exists cross-platform
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 // Dual SQLite runtime adapter: uses better-sqlite3 when present, with built-in node:sqlite fallback
 let dbInstance: any;
@@ -19,8 +29,14 @@ try {
   const BetterSqlite3 = require('better-sqlite3');
   dbInstance = new BetterSqlite3(DB_PATH);
 } catch {
-  const { DatabaseSync } = require('node:sqlite');
-  dbInstance = new DatabaseSync(DB_PATH);
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    dbInstance = new DatabaseSync(DB_PATH);
+  } catch (sqliteErr) {
+    console.error(`\x1b[31m[Warden-AI DB] ❌ Failed to open SQLite database at: ${DB_PATH}\x1b[0m`);
+    console.error('Please ensure the path is writable and your Node version supports SQLite (Node 18+).\n');
+    throw sqliteErr;
+  }
 }
 
 export const db: any = dbInstance;

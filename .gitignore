@@ -19,6 +19,7 @@ audit.db*
 .env
 .env.local
 .env.*.local
+.env.decoy
 
 # Logs
 npm-debug.log*

@@ -56,6 +56,7 @@ flowchart LR
 - **Real-Time Control Plane:** Bidirectional WebSocket stream instantly notifies the operator and unblocks waiting CLI processes upon human approval.
 - **Immutable SQLite Audit Trail:** Every single tool call is cryptographically timestamped and persisted locally in SQLite (`audit_logs`) with status, agent name, and exact payload parameters.
 - **Zero Cloud Dependencies:** 100% local execution. No telemetry, no external database dependencies, and no Docker requirement.
+- **Newcomer-Proof DevEx & Preflight Healthcheck:** Built-in bootloader verifies Git availability, workspace write permissions, Docker daemon health, and validates environment variables via Zod before booting.
 
 ---
 
@@ -63,20 +64,31 @@ flowchart LR
 
 ```text
 Warden-AI/
+├── .env.example                # Canonical environment variable template
 ├── docker-compose.yml          # One-command orchestration for all services
+├── package.json                # Root orchestration & bootstrap scripts
 ├── backend/
 │   ├── Dockerfile              # Multi-stage Node 20 Alpine build
 │   ├── .dockerignore
 │   ├── src/
 │   │   ├── index.ts           # Express & WebSocket server entrypoint
+│   │   ├── cli/
+│   │   │   └── healthcheck.ts # Preflight bootloader verification suite
+│   │   ├── config/
+│   │   │   └── env.ts         # Zod environment schema & path validation
 │   │   ├── db/
 │   │   │   └── client.ts      # SQLite audit trail initialization & queries
 │   │   ├── proxy/
 │   │   │   └── interceptor.ts # Async request holding logic & MCP route
+│   │   ├── security/
+│   │   │   └── honeypot.ts    # Cryptographic decoy honeypots & IDS quarantine
+│   │   ├── utils/
+│   │   │   └── model-loader.ts# Graceful model loader with terminal feedback
 │   │   └── ws/
 │   │       └── socket.ts      # WebSocket server & approval dispatcher
 │   ├── scripts/
-│   │   └── test-agent.ts      # Mock autonomous AI agent simulator
+│   │   ├── test-agent.ts      # Mock autonomous AI agent simulator
+│   │   └── test-honeypot-breach.ts # IDS intrusion & session lockout test
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
@@ -103,6 +115,7 @@ Warden-AI/
 
 ### Prerequisites
 - **Node.js**: v18.0.0 or newer
+- **Git**: Installed and accessible in system `$PATH`
 - **npm** or **pnpm** / **yarn**
 
 ---
@@ -113,15 +126,22 @@ git clone https://github.com/hariom123-dev/Warden-AI.git
 cd Warden-AI
 ```
 
+Optional: Copy the environment configuration template:
+```bash
+cp .env.example .env
+```
+*(If omitted, sane local defaults will be applied automatically.)*
+
 ---
 
 ### Step 2: Start the Backend Gateway (Terminal 1)
 ```bash
 cd backend
 npm install
+npm run bootstrap   # Runs preflight healthcheck (Git, Docker, write access, env)
 npm run dev
 ```
-> Server will listen on **`http://localhost:3001`** and mount the WebSocket control stream.
+> Server will listen on **`http://localhost:3001`** and mount the WebSocket control stream. Note: `npm run dev` and `npm start` automatically run the healthcheck preflight via `predev`/`prestart`.
 
 ---
 
