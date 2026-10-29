@@ -43,7 +43,45 @@ export function initDatabase(): void {
       payload TEXT,
       status TEXT -- 'pending', 'approved', 'rejected'
     );
+
+    CREATE TABLE IF NOT EXISTS locked_sessions (
+      session_id TEXT PRIMARY KEY,
+      reason TEXT,
+      locked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+}
+
+export function lockSessionInDb(sessionId: string, reason = 'Intrusion honeypot triggered'): void {
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO locked_sessions (session_id, reason, locked_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+  `);
+  stmt.run(sessionId, reason);
+}
+
+export function isSessionLockedInDb(sessionId: string): boolean {
+  try {
+    const stmt = db.prepare(`
+      SELECT session_id FROM locked_sessions WHERE session_id = ?
+    `);
+    const row = stmt.get(sessionId);
+    return !!row;
+  } catch {
+    return false;
+  }
+}
+
+export function getAllLockedSessionsFromDb(): string[] {
+  try {
+    const stmt = db.prepare(`
+      SELECT session_id FROM locked_sessions ORDER BY locked_at DESC
+    `);
+    const rows = stmt.all() as { session_id: string }[];
+    return rows.map((r) => r.session_id);
+  } catch {
+    return [];
+  }
 }
 
 export function insertAuditLog(

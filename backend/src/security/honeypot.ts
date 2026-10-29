@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { lockSessionInDb, isSessionLockedInDb, getAllLockedSessionsFromDb } from '../db/client';
 
 export interface BreachIncident {
   id: string;
@@ -102,20 +103,27 @@ export function isHoneypotAccess(filePathOrCommand: string): boolean {
  * Checks if a session or agent is locked out due to prior intrusion breach.
  */
 export function isSessionLocked(sessionIdOrAgent: string): boolean {
-  return lockedSessions.has(sessionIdOrAgent);
+  return lockedSessions.has(sessionIdOrAgent) || isSessionLockedInDb(sessionIdOrAgent);
 }
 
 /**
  * Locks and revokes all execution rights for the given session ID or agent.
  */
-export function lockSession(sessionIdOrAgent: string): void {
+export function lockSession(sessionIdOrAgent: string, reason = 'Intrusion honeypot (.env.decoy) triggered'): void {
   lockedSessions.add(sessionIdOrAgent);
-  console.error(`[Warden-IDS] PERMANENT LOCKOUT: Session/Agent "${sessionIdOrAgent}" quarantined.`);
+  try {
+    lockSessionInDb(sessionIdOrAgent, reason);
+  } catch (err) {
+    console.error('[Warden-IDS] Failed to write locked session to SQLite:', err);
+  }
+  console.error(`[Warden-IDS] PERMANENT LOCKOUT: Session/Agent "${sessionIdOrAgent}" quarantined in SQLite.`);
 }
 
 /**
  * Returns all currently quarantined sessions.
  */
 export function getQuarantinedSessions(): string[] {
-  return Array.from(lockedSessions);
+  const dbSessions = getAllLockedSessionsFromDb();
+  const allSessions = new Set([...Array.from(lockedSessions), ...dbSessions]);
+  return Array.from(allSessions);
 }
